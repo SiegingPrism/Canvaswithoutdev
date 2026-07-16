@@ -1,0 +1,9 @@
+{
+  "appId": "com.slate.canvas",
+  "appName": "Slate",
+  "webDir": "dist/client",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
