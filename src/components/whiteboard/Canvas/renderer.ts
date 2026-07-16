@@ -111,7 +111,14 @@ function drawCard(
   }
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.moveTo(x + rr, y);
@@ -125,7 +132,10 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 // ---------- Registration ----------
 
 const boxBounds = (o: { x: number; y: number; w: number; h: number }) => ({
-  x: o.x, y: o.y, w: o.w, h: o.h,
+  x: o.x,
+  y: o.y,
+  w: o.w,
+  h: o.h,
 });
 
 registerObject<import("@/lib/whiteboard/types").PenStroke>({
@@ -182,7 +192,6 @@ registerObject<ImageObject>({
   draw: (o, rc) => drawImage(o, rc),
   bounds: boxBounds,
 });
-
 
 // Feature stubs — placeholder renderers so AI Studio can drop them onto boards.
 registerObject<FlashcardObject>({

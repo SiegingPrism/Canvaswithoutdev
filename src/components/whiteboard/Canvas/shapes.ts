@@ -38,7 +38,15 @@ export function drawRainbow(ctx: CanvasRenderingContext2D, s: StrokeBase) {
   }
 }
 
-function polygonPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, sides: number, startAngle = -Math.PI / 2) {
+function polygonPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  sides: number,
+  startAngle = -Math.PI / 2,
+) {
   ctx.beginPath();
   for (let i = 0; i < sides; i++) {
     const a = startAngle + (i * Math.PI * 2) / sides;
@@ -50,7 +58,14 @@ function polygonPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: 
   ctx.closePath();
 }
 
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
   const rr = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
   ctx.beginPath();
   ctx.moveTo(x + rr, y);
@@ -61,7 +76,14 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-function arrowHead(ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, size: number) {
+function arrowHead(
+  ctx: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  size: number,
+) {
   const a = Math.atan2(toY - fromY, toX - fromX);
   const h = Math.max(8, size * 3);
   ctx.beginPath();
@@ -291,7 +313,10 @@ export function drawShape(ctx: CanvasRenderingContext2D, s: ShapeStroke) {
   }
 }
 
-export const SHAPE_LIBRARY: Array<{ category: string; items: Array<{ kind: ShapeKind; label: string }> }> = [
+export const SHAPE_LIBRARY: Array<{
+  category: string;
+  items: Array<{ kind: ShapeKind; label: string }>;
+}> = [
   {
     category: "General",
     items: [

@@ -7,6 +7,7 @@ import { drawBackground } from "./background";
 import { drawSelection, getHandleAt, hitTest, type Handle } from "./selection";
 import { toWorld, wheelZoom } from "./camera";
 import { animateLaserFade, drawLive, finalizeStroke } from "./drawing";
+import { drawGuides, snapMove } from "./guides";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -27,12 +28,15 @@ export function WhiteboardCanvas() {
     addObject,
     updateObject,
     deleteObject,
+    duplicateObject,
     setSelected,
     setCamera,
+    setTool,
     pushHistory,
+    undo,
+    redo,
     autoRecognizeShape,
   } = useWhiteboard();
-
 
   const page = pages.find((p) => p.id === activePageId)!;
   const [dpr, setDpr] = useState(1);
@@ -80,6 +84,51 @@ export function WhiteboardCanvas() {
     redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, camera, selectedId, dpr]);
+
+  // Keyboard shortcuts (PRD Doc 3 §20)
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "TEXTAREA" || target.tagName === "INPUT" || target.isContentEditable)
+        return;
+      const mod = e.metaKey || e.ctrlKey;
+      const s = useWhiteboard.getState();
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        if (s.selectedId) {
+          duplicateObject(s.selectedId);
+          pushHistory();
+        }
+        return;
+      }
+      if (mod && e.key === "0") {
+        e.preventDefault();
+        setCamera({ x: 0, y: 0, zoom: 1 });
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && s.selectedId) {
+        e.preventDefault();
+        pushHistory();
+        deleteObject(s.selectedId);
+        return;
+      }
+      if (e.key === "Escape") {
+        setSelected(null);
+        return;
+      }
+      if (!mod && e.key.toLowerCase() === "v") setTool("select");
+      if (!mod && e.key.toLowerCase() === "p") setTool("pen");
+      if (!mod && e.key.toLowerCase() === "h") setTool("pan");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undo, redo, duplicateObject, deleteObject, setSelected, setCamera, setTool, pushHistory]);
 
   function redraw() {
     const c = canvasRef.current;
@@ -177,22 +226,47 @@ export function WhiteboardCanvas() {
       const dy = w.y - d.start.y;
       const orig = d.obj;
       if (d.handle.type === "move") {
+        // Smart guides: snap edges/centers to nearby objects (PRD Doc 3 §12)
+        const snap = snapMove(orig, dx, dy, page.objects, camera.zoom);
+        if (overlayRef.current) drawGuides(overlayRef.current, dpr, camera, snap.guides);
         if ("points" in orig) {
           updateObject(d.id, {
-            points: orig.points.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy })),
+            points: orig.points.map((p) => ({ ...p, x: p.x + snap.dx, y: p.y + snap.dy })),
           } as Partial<CanvasObject>);
         } else {
-          updateObject(d.id, { x: orig.x + dx, y: orig.y + dy } as Partial<CanvasObject>);
+          updateObject(d.id, { x: orig.x + snap.dx, y: orig.y + snap.dy } as Partial<CanvasObject>);
         }
       } else {
         if (!("points" in orig)) {
-          let nx = orig.x, ny = orig.y, nw = orig.w, nh = orig.h;
-          if (d.handle.corner === "se") { nw = orig.w + dx; nh = orig.h + dy; }
-          if (d.handle.corner === "ne") { ny = orig.y + dy; nw = orig.w + dx; nh = orig.h - dy; }
-          if (d.handle.corner === "sw") { nx = orig.x + dx; nw = orig.w - dx; nh = orig.h + dy; }
-          if (d.handle.corner === "nw") { nx = orig.x + dx; ny = orig.y + dy; nw = orig.w - dx; nh = orig.h - dy; }
+          let nx = orig.x,
+            ny = orig.y,
+            nw = orig.w,
+            nh = orig.h;
+          if (d.handle.corner === "se") {
+            nw = orig.w + dx;
+            nh = orig.h + dy;
+          }
+          if (d.handle.corner === "ne") {
+            ny = orig.y + dy;
+            nw = orig.w + dx;
+            nh = orig.h - dy;
+          }
+          if (d.handle.corner === "sw") {
+            nx = orig.x + dx;
+            nw = orig.w - dx;
+            nh = orig.h + dy;
+          }
+          if (d.handle.corner === "nw") {
+            nx = orig.x + dx;
+            ny = orig.y + dy;
+            nw = orig.w - dx;
+            nh = orig.h - dy;
+          }
           updateObject(d.id, {
-            x: nx, y: ny, w: Math.max(20, nw), h: Math.max(20, nh),
+            x: nx,
+            y: ny,
+            w: Math.max(20, nw),
+            h: Math.max(20, nh),
           } as Partial<CanvasObject>);
         }
       }
@@ -217,7 +291,8 @@ export function WhiteboardCanvas() {
       } else if (tool === "laser") {
         laserRef.current.push(w);
         const maxAge = 800;
-        const drop = laserRef.current.length - Math.min(laserRef.current.length, Math.floor(maxAge / 8));
+        const drop =
+          laserRef.current.length - Math.min(laserRef.current.length, Math.floor(maxAge / 8));
         if (drop > 0) laserRef.current.splice(0, drop);
       }
       drawLive(overlayRef.current!, dpr, camera, tool, color, size, drawingRef.current.points);
@@ -227,6 +302,12 @@ export function WhiteboardCanvas() {
   function onPointerUp() {
     panRef.current = null;
     if (dragRef.current) {
+      const overlay = overlayRef.current;
+      if (overlay) {
+        const octx = overlay.getContext("2d")!;
+        octx.setTransform(1, 0, 0, 1, 0, 0);
+        octx.clearRect(0, 0, overlay.width, overlay.height);
+      }
       pushHistory();
       dragRef.current = null;
       return;

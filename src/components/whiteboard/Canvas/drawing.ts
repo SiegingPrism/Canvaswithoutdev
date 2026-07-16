@@ -81,7 +81,6 @@ export function finalizeStroke(
   return null;
 }
 
-
 /** Animated fade for the laser trail. */
 export function animateLaserFade(
   overlay: HTMLCanvasElement,

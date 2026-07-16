@@ -1,13 +1,6 @@
 import { create } from "zustand";
-import type {
-  BackgroundStyle,
-  CanvasObject,
-  Page,
-  ToolId,
-  WhiteboardState,
-} from "./types";
+import type { BackgroundStyle, CanvasObject, Page, ToolId, WhiteboardState } from "./types";
 import { pagesForTemplate, type TemplateKey } from "./templates";
-
 
 const STORAGE_KEY = "whiteboard.multi.v1";
 const LEGACY_KEY = "whiteboard.v1";
@@ -22,7 +15,13 @@ type Prefs = {
 
 function defaultPrefs(): Prefs {
   return {
-    toolColors: { pen: "#111827", highlighter: "#facc15", rainbow: "#ef4444", shape: "#0ea5e9", text: "#111827" },
+    toolColors: {
+      pen: "#111827",
+      highlighter: "#facc15",
+      rainbow: "#ef4444",
+      shape: "#0ea5e9",
+      text: "#111827",
+    },
     recentColors: [],
     favoriteColors: [],
     autoRecognizeShape: true,
@@ -55,7 +54,6 @@ function uid() {
 function nowMs() {
   return Date.now();
 }
-
 
 function emptyPage(background: Page["background"] = "white"): Page {
   return { id: uid(), objects: [], background };
@@ -155,6 +153,8 @@ type Actions = {
   addObjects: (objs: CanvasObject[]) => void;
   updateObject: (id: string, patch: Partial<CanvasObject>) => void;
   deleteObject: (id: string) => void;
+  duplicateObject: (id: string) => string | null;
+  reorderObject: (id: string, dir: "front" | "back" | "forward" | "backward") => void;
   clearPage: () => void;
   addPage: () => void;
   removePage: (id: string) => void;
@@ -172,7 +172,12 @@ type Actions = {
   redo: () => void;
 
   // Board CRUD
-  createBoard: (opts?: { title?: string; templateKey?: TemplateKey; folderId?: string | null }) => string;
+  createBoard: (opts?: {
+    title?: string;
+    templateKey?: TemplateKey;
+    folderId?: string | null;
+  }) => string;
+  importBoard: (data: { title?: string; pages: Page[] }) => string;
   openBoard: (id: string) => void;
   renameBoard: (id: string, title: string) => void;
   deleteBoard: (id: string) => void;
@@ -190,6 +195,7 @@ type Actions = {
   // AI history
   addRecentAI: (item: Omit<RecentAI, "id" | "createdAt">) => void;
   clearRecentAI: () => void;
+  applyTemplate: (templateKey: TemplateKey) => void;
 };
 
 type State = WhiteboardState & PersistShape & { activeBoardId: string | null };
@@ -326,7 +332,12 @@ export const useWhiteboard = create<State & Actions>((set, get) => {
       const s = get();
       const pages = s.pages.map((p) =>
         p.id === s.activePageId
-          ? { ...p, objects: p.objects.map((o) => (o.id === id ? ({ ...o, ...patch } as CanvasObject) : o)) }
+          ? {
+              ...p,
+              objects: p.objects.map((o) =>
+                o.id === id ? ({ ...o, ...patch } as CanvasObject) : o,
+              ),
+            }
           : p,
       );
       set(syncActive({ ...s, pages }));
@@ -337,6 +348,42 @@ export const useWhiteboard = create<State & Actions>((set, get) => {
         p.id === s.activePageId ? { ...p, objects: p.objects.filter((o) => o.id !== id) } : p,
       );
       set(syncActive({ ...s, pages, selectedId: null }));
+    },
+    duplicateObject: (id) => {
+      const s = get();
+      const page = s.pages.find((p) => p.id === s.activePageId);
+      const src = page?.objects.find((o) => o.id === id);
+      if (!src) return null;
+      const clone = structuredClone(src) as CanvasObject;
+      clone.id = uid();
+      const off = 24;
+      if ("points" in clone) {
+        clone.points = clone.points.map((p) => ({ ...p, x: p.x + off, y: p.y + off }));
+      } else {
+        (clone as { x: number; y: number }).x += off;
+        (clone as { x: number; y: number }).y += off;
+      }
+      const pages = s.pages.map((p) =>
+        p.id === s.activePageId ? { ...p, objects: [...p.objects, clone] } : p,
+      );
+      set(syncActive({ ...s, pages, selectedId: clone.id }));
+      return clone.id;
+    },
+    reorderObject: (id, dir) => {
+      const s = get();
+      const pages = s.pages.map((p) => {
+        if (p.id !== s.activePageId) return p;
+        const i = p.objects.findIndex((o) => o.id === id);
+        if (i < 0) return p;
+        const objects = [...p.objects];
+        const [obj] = objects.splice(i, 1);
+        if (dir === "front") objects.push(obj);
+        else if (dir === "back") objects.unshift(obj);
+        else if (dir === "forward") objects.splice(Math.min(i + 1, objects.length), 0, obj);
+        else objects.splice(Math.max(i - 1, 0), 0, obj);
+        return { ...p, objects };
+      });
+      set(syncActive({ ...s, pages }));
     },
     clearPage: () => {
       const s = get();
@@ -376,25 +423,19 @@ export const useWhiteboard = create<State & Actions>((set, get) => {
       // Bug fix: never mutate before a board is opened; would corrupt the "temp" page
       // and could ghost into a fresh board later. No-op until openBoard has run.
       if (!s.activeBoardId || !s.boards[s.activeBoardId]) return;
-      const pages = s.pages.map((p) =>
-        p.id === s.activePageId ? { ...p, background: bg } : p,
-      );
+      const pages = s.pages.map((p) => (p.id === s.activePageId ? { ...p, background: bg } : p));
       set(syncActive({ ...s, pages }));
     },
     setBackgroundStyle: (style) => {
       const s = get();
       if (!s.activeBoardId || !s.boards[s.activeBoardId]) return;
-      const pages = s.pages.map((p) =>
-        p.id === s.activePageId ? { ...p, bgStyle: style } : p,
-      );
+      const pages = s.pages.map((p) => (p.id === s.activePageId ? { ...p, bgStyle: style } : p));
       set(syncActive({ ...s, pages }));
     },
     setBackgroundColor: (color) => {
       const s = get();
       if (!s.activeBoardId || !s.boards[s.activeBoardId]) return;
-      const pages = s.pages.map((p) =>
-        p.id === s.activePageId ? { ...p, bgColor: color } : p,
-      );
+      const pages = s.pages.map((p) => (p.id === s.activePageId ? { ...p, bgColor: color } : p));
       set(syncActive({ ...s, pages }));
     },
 
@@ -426,10 +467,40 @@ export const useWhiteboard = create<State & Actions>((set, get) => {
       const pages = templateKey ? pagesForTemplate(templateKey) : [emptyPage()];
       const title = opts?.title ?? "Untitled board";
       const meta: BoardMeta = {
-        id, title, tags: [], folderId: opts?.folderId ?? null,
-        favorite: false, archived: false,
-        createdAt: nowMs(), updatedAt: nowMs(),
+        id,
+        title,
+        tags: [],
+        folderId: opts?.folderId ?? null,
+        favorite: false,
+        archived: false,
+        createdAt: nowMs(),
+        updatedAt: nowMs(),
         templateKey,
+      };
+      const boards = { ...s.boards, [id]: meta };
+      const boardOrder = [id, ...s.boardOrder];
+      const boardData = { ...s.boardData, [id]: { pages, activePageId: pages[0].id } };
+      const next: State = { ...s, boards, boardOrder, boardData };
+      persistMeta(next);
+      set(next);
+      return id;
+    },
+    importBoard: (data) => {
+      const s = get();
+      const id = uid();
+      const pages: Page[] =
+        Array.isArray(data.pages) && data.pages.length
+          ? data.pages.map((p) => ({ ...p, id: p.id || uid() }))
+          : [emptyPage()];
+      const meta: BoardMeta = {
+        id,
+        title: data.title ?? "Imported board",
+        tags: [],
+        folderId: null,
+        favorite: false,
+        archived: false,
+        createdAt: nowMs(),
+        updatedAt: nowMs(),
       };
       const boards = { ...s.boards, [id]: meta };
       const boardOrder = [id, ...s.boardOrder];
@@ -555,7 +626,6 @@ export const useWhiteboard = create<State & Actions>((set, get) => {
       set(next);
     },
 
-
     createFolder: (name) => {
       const s = get();
       const id = uid();
@@ -597,6 +667,25 @@ export const useWhiteboard = create<State & Actions>((set, get) => {
       const next = { ...s, recentAI: [] };
       persistMeta(next);
       set(next);
+    },
+    applyTemplate: (templateKey) => {
+      const s = get();
+      if (!s.activeBoardId || !s.boards[s.activeBoardId]) return;
+      const tPages = pagesForTemplate(templateKey);
+      if (!tPages.length) return;
+      const templatePage = tPages[0];
+      const pages = s.pages.map((p) =>
+        p.id === s.activePageId
+          ? {
+              ...p,
+              background: templatePage.background,
+              bgStyle: templatePage.bgStyle,
+              bgColor: templatePage.bgColor,
+              objects: templatePage.objects,
+            }
+          : p,
+      );
+      set(syncActive({ ...s, pages, selectedId: null }));
     },
   };
 });

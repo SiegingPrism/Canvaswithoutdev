@@ -54,6 +54,8 @@ export function TopBar({
     addObject,
     pushHistory,
     createBoard,
+    importBoard,
+    applyTemplate,
   } = useWhiteboard();
 
   const navigate = useNavigate();
@@ -99,9 +101,40 @@ export function TopBar({
     void dataUrl;
   }
 
+  function exportJSON() {
+    const state = useWhiteboard.getState();
+    const data = JSON.stringify(
+      { title: boardTitle ?? "Board", pages: state.pages, exportedAt: Date.now() },
+      null,
+      2,
+    );
+    const blob = new Blob([data], { type: "application/json" });
+    const link = document.createElement("a");
+    link.download = `${(boardTitle ?? "board").replace(/[^a-z0-9-_ ]/gi, "").trim() || "board"}.json`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
   function importFile(files: FileList | null) {
     if (!files?.length) return;
     const file = files[0];
+    if (file.type === "application/json" || file.name.endsWith(".json")) {
+      const jsonReader = new FileReader();
+      jsonReader.onload = () => {
+        try {
+          const data = JSON.parse(jsonReader.result as string);
+          if (!Array.isArray(data.pages)) throw new Error("Invalid board file");
+          const id = importBoard({ title: data.title, pages: data.pages });
+          toast.success("Board imported");
+          navigate({ to: "/board/$boardId", params: { boardId: id } });
+        } catch {
+          toast.error("Couldn't read this board file");
+        }
+      };
+      jsonReader.readAsText(file);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const src = reader.result as string;
@@ -152,8 +185,8 @@ export function TopBar({
               <button
                 key={t.key}
                 onClick={() => {
-                  const id = createBoard({ templateKey: t.key as TemplateKey, title: t.title });
-                  navigate({ to: "/board/$boardId", params: { boardId: id } });
+                  applyTemplate(t.key as TemplateKey);
+                  toast.success(`Applied ${t.title} template`);
                 }}
                 className="flex w-full items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-accent"
               >
@@ -169,7 +202,10 @@ export function TopBar({
       </Popover>
 
       {boardTitle && (
-        <div className="hidden max-w-[180px] truncate px-2 text-sm font-medium sm:block" title={boardTitle}>
+        <div
+          className="hidden max-w-[180px] truncate px-2 text-sm font-medium sm:block"
+          title={boardTitle}
+        >
           {boardTitle}
         </div>
       )}
@@ -178,14 +214,13 @@ export function TopBar({
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/json,.json"
         className="hidden"
         onChange={(e) => importFile(e.target.files)}
       />
       <button className={btn} title="Import" onClick={() => fileRef.current?.click()}>
         <Upload className="h-5 w-5" />
       </button>
-
 
       <Popover>
         <PopoverTrigger asChild>
@@ -205,6 +240,12 @@ export function TopBar({
             onClick={exportPDF}
           >
             <Download className="h-4 w-4" /> PDF file
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+            onClick={exportJSON}
+          >
+            <Download className="h-4 w-4" /> JSON board
           </button>
         </PopoverContent>
       </Popover>
@@ -279,7 +320,9 @@ export function TopBar({
                         title={c.name}
                         onClick={() => setBackgroundColor(c.hex)}
                         className={`h-7 w-7 rounded-full ring-2 transition ${
-                          color.toLowerCase() === c.hex.toLowerCase() ? "ring-primary" : "ring-border"
+                          color.toLowerCase() === c.hex.toLowerCase()
+                            ? "ring-primary"
+                            : "ring-border"
                         }`}
                         style={{ backgroundColor: c.hex }}
                       />
@@ -298,7 +341,6 @@ export function TopBar({
         </PopoverContent>
       </Popover>
 
-
       <button className={btn} onClick={onOpenWidgets} title="Widgets">
         <Package className="h-5 w-5" />
       </button>
@@ -315,8 +357,8 @@ export function TopBar({
             <div className="flex flex-col items-center gap-3">
               <img src={qrData} alt="QR code" className="rounded-lg border" />
               <p className="text-xs text-muted-foreground text-center">
-                Scan with a mobile device to open this whiteboard URL.
-                Use Export to save the notes as image or PDF.
+                Scan with a mobile device to open this whiteboard URL. Use Export to save the notes
+                as image or PDF.
               </p>
             </div>
           )}

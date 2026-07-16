@@ -2,12 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 
-export type AIObjectKind =
-  | "flashcard"
-  | "quiz"
-  | "timeline"
-  | "uml"
-  | "roadmap";
+export type AIObjectKind = "flashcard" | "quiz" | "timeline" | "uml" | "roadmap" | "mindmap";
 
 const Flashcards = z.object({
   items: z.array(z.object({ front: z.string(), back: z.string() })),
@@ -38,6 +33,15 @@ const Roadmaps = z.object({
     }),
   ),
 });
+const MindMaps = z.object({
+  title: z.string(),
+  branches: z.array(
+    z.object({
+      label: z.string(),
+      children: z.array(z.string()),
+    }),
+  ),
+});
 
 const schemas = {
   flashcard: Flashcards,
@@ -45,6 +49,7 @@ const schemas = {
   timeline: Timelines,
   uml: UMLs,
   roadmap: Roadmaps,
+  mindmap: MindMaps,
 };
 
 const prompts: Record<AIObjectKind, (topic: string) => string> = {
@@ -58,14 +63,18 @@ const prompts: Record<AIObjectKind, (topic: string) => string> = {
     `Create a UML class-style description for: ${t}. Choose umlType (class/actor/box), give a title and 4-8 lines like "+ methodName(): ReturnType" or "- field: Type".`,
   roadmap: (t) =>
     `Create a 6-step project roadmap for: ${t}. Each step has a short title and a status (todo/doing/done).`,
+  mindmap: (t) =>
+    `Create a mind map for: ${t}. Give a short central title and 4-6 branches, each with a 1-3 word label and 2-4 short child items.`,
 };
 
 export const generateLearningObjects = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        kind: z.enum(["flashcard", "quiz", "timeline", "uml", "roadmap"]),
+        kind: z.enum(["flashcard", "quiz", "timeline", "uml", "roadmap", "mindmap"]),
         topic: z.string().min(1),
+        /** Optional board/notes context (PRD Doc 5 §10 — context sources) */
+        context: z.string().max(12000).optional(),
       })
       .parse(input),
   )
@@ -75,11 +84,14 @@ export const generateLearningObjects = createServerFn({ method: "POST" })
     const { createGoogleProvider } = await import("@/lib/ai-gateway.server");
     const googleProvider = createGoogleProvider(key);
     const schema = schemas[data.kind];
+    const contextPart = data.context
+      ? `\n\nUse this workspace content as the primary source material:\n"""\n${data.context}\n"""`
+      : "";
     const { output } = await generateText({
       model: googleProvider("gemini-2.5-flash"),
       system:
         "You are an educational content generator. Output only valid JSON matching the schema. Keep text concise and accurate.",
-      prompt: prompts[data.kind](data.topic),
+      prompt: prompts[data.kind](data.topic) + contextPart,
       output: Output.object({ schema: schema as unknown as z.ZodType }),
     });
     return { kind: data.kind, topic: data.topic, output } as const;

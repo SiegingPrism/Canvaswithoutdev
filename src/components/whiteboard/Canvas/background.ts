@@ -23,8 +23,7 @@ export function resolveBackground(page: Page): { style: BackgroundStyle; color: 
     (page.background === "white" || page.background === "dark"
       ? "blank"
       : (page.background as BackgroundStyle));
-  const color =
-    page.bgColor ?? (page.background === "dark" ? BG_PALETTE.black : BG_PALETTE.white);
+  const color = page.bgColor ?? (page.background === "dark" ? BG_PALETTE.black : BG_PALETTE.white);
   return { style, color };
 }
 
@@ -44,9 +43,7 @@ export function drawBackground(
   camera: { x: number; y: number; zoom: number },
 ) {
   const page: Page =
-    typeof bg === "string"
-      ? ({ id: "", objects: [], background: bg } as Page)
-      : (bg as Page);
+    typeof bg === "string" ? ({ id: "", objects: [], background: bg } as Page) : (bg as Page);
   const { style, color } = resolveBackground(page);
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, w, h);

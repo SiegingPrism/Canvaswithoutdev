@@ -11,8 +11,9 @@ import {
   Clock,
   Star,
   Wand2,
+  NotebookPen,
+  GraduationCap,
 } from "lucide-react";
-
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,7 +56,6 @@ function Dashboard() {
     navigate({ to: "/board/$boardId", params: { boardId: id } });
   }
 
-
   return (
     <div className="min-h-dvh bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
@@ -72,6 +72,18 @@ function Dashboard() {
               className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
             >
               <FolderOpen className="h-4 w-4" /> Library
+            </Link>
+            <Link
+              to="/notes"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <NotebookPen className="h-4 w-4" /> Notes
+            </Link>
+            <Link
+              to="/learn"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <GraduationCap className="h-4 w-4" /> Learn
             </Link>
             <Button size="sm" onClick={() => openNew()}>
               <Plus className="h-4 w-4" /> New board
@@ -102,7 +114,9 @@ function Dashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold">{continueBoard.title}</h3>
-                  {continueBoard.favorite && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+                  {continueBoard.favorite && (
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Last edited {relTime(continueBoard.updatedAt)}
@@ -135,9 +149,20 @@ function Dashboard() {
               subtitle="Start blank and open the AI helper"
               onClick={() => openNew()}
             />
+            <QuickCard
+              icon={<NotebookPen className="h-5 w-5" />}
+              title="New note"
+              subtitle="Block-based notes with AI actions"
+              onClick={() => navigate({ to: "/notes" })}
+            />
+            <QuickCard
+              icon={<GraduationCap className="h-5 w-5" />}
+              title="Learning Hub"
+              subtitle="Study flashcards & take quizzes"
+              onClick={() => navigate({ to: "/learn" })}
+            />
           </div>
         </section>
-
 
         {/* Recent Boards */}
         <section>
@@ -153,7 +178,11 @@ function Dashboard() {
             <EmptyState
               title="No boards yet"
               subtitle="Create your first board to get started."
-              action={<Button onClick={() => openNew()}><Plus className="h-4 w-4" /> New board</Button>}
+              action={
+                <Button onClick={() => openNew()}>
+                  <Plus className="h-4 w-4" /> New board
+                </Button>
+              }
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -178,14 +207,15 @@ function Dashboard() {
                   </div>
                   <div className="border-t p-2">
                     <div className="flex items-center gap-1.5 text-sm font-medium">
-                      {b.favorite && <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />}
+                      {b.favorite && (
+                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                      )}
                       <span className="truncate">{b.title}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">{relTime(b.updatedAt)}</div>
                   </div>
                 </button>
               ))}
-
             </div>
           )}
         </section>
@@ -209,7 +239,9 @@ function Dashboard() {
                         {r.response}
                       </div>
                     </div>
-                    <div className="shrink-0 text-xs text-muted-foreground">{relTime(r.createdAt)}</div>
+                    <div className="shrink-0 text-xs text-muted-foreground">
+                      {relTime(r.createdAt)}
+                    </div>
                   </div>
                   {r.boardId && boards[r.boardId] && (
                     <Link

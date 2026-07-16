@@ -1,9 +1,7 @@
 import type { CanvasObject, Point } from "@/lib/whiteboard/types";
 import { objectBounds } from "./renderer";
 
-export type Handle =
-  | { type: "move" }
-  | { type: "resize"; corner: "nw" | "ne" | "sw" | "se" };
+export type Handle = { type: "move" } | { type: "resize"; corner: "nw" | "ne" | "sw" | "se" };
 
 export function hitTest(objects: CanvasObject[], pt: Point): CanvasObject | null {
   for (let i = objects.length - 1; i >= 0; i--) {
@@ -26,8 +24,7 @@ export function getHandleAt(pt: Point, obj: CanvasObject, zoom: number): Handle 
     [b.x + b.w, b.y + b.h, "se"],
   ];
   for (const [cx, cy, corner] of corners) {
-    if (Math.abs(pt.x - cx) < h && Math.abs(pt.y - cy) < h)
-      return { type: "resize", corner };
+    if (Math.abs(pt.x - cx) < h && Math.abs(pt.y - cy) < h) return { type: "resize", corner };
   }
   return { type: "move" };
 }

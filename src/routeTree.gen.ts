@@ -9,19 +9,37 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NotesRouteImport } from './routes/notes'
 import { Route as LibraryRouteImport } from './routes/library'
+import { Route as LearnRouteImport } from './routes/learn'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NoteNoteIdRouteImport } from './routes/note.$noteId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryRoute = LibraryRouteImport.update({
   id: '/library',
   path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearnRoute = LearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoteNoteIdRoute = NoteNoteIdRouteImport.update({
+  id: '/note/$noteId',
+  path: '/note/$noteId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
@@ -37,40 +55,81 @@ const ApiChatRoute = ApiChatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/learn': typeof LearnRoute
   '/library': typeof LibraryRoute
+  '/notes': typeof NotesRoute
   '/api/chat': typeof ApiChatRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/note/$noteId': typeof NoteNoteIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/learn': typeof LearnRoute
   '/library': typeof LibraryRoute
+  '/notes': typeof NotesRoute
   '/api/chat': typeof ApiChatRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/note/$noteId': typeof NoteNoteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/learn': typeof LearnRoute
   '/library': typeof LibraryRoute
+  '/notes': typeof NotesRoute
   '/api/chat': typeof ApiChatRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/note/$noteId': typeof NoteNoteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/library' | '/api/chat' | '/board/$boardId'
+  fullPaths:
+    | '/'
+    | '/learn'
+    | '/library'
+    | '/notes'
+    | '/api/chat'
+    | '/board/$boardId'
+    | '/note/$noteId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/library' | '/api/chat' | '/board/$boardId'
-  id: '__root__' | '/' | '/library' | '/api/chat' | '/board/$boardId'
+  to:
+    | '/'
+    | '/learn'
+    | '/library'
+    | '/notes'
+    | '/api/chat'
+    | '/board/$boardId'
+    | '/note/$noteId'
+  id:
+    | '__root__'
+    | '/'
+    | '/learn'
+    | '/library'
+    | '/notes'
+    | '/api/chat'
+    | '/board/$boardId'
+    | '/note/$noteId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LearnRoute: typeof LearnRoute
   LibraryRoute: typeof LibraryRoute
+  NotesRoute: typeof NotesRoute
   ApiChatRoute: typeof ApiChatRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
+  NoteNoteIdRoute: typeof NoteNoteIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library': {
       id: '/library'
       path: '/library'
@@ -78,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn': {
+      id: '/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/note/$noteId': {
+      id: '/note/$noteId'
+      path: '/note/$noteId'
+      fullPath: '/note/$noteId'
+      preLoaderRoute: typeof NoteNoteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/board/$boardId': {
@@ -104,9 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LearnRoute: LearnRoute,
   LibraryRoute: LibraryRoute,
+  NotesRoute: NotesRoute,
   ApiChatRoute: ApiChatRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
+  NoteNoteIdRoute: NoteNoteIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
