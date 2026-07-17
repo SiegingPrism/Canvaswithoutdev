@@ -13,7 +13,14 @@ import {
   Wand2,
   NotebookPen,
   GraduationCap,
+  Menu,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,7 +73,8 @@ function Dashboard() {
             </span>
             Slate
           </Link>
-          <nav className="flex items-center gap-2">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-2">
             <Link
               to="/library"
               className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
@@ -89,6 +97,37 @@ function Dashboard() {
               <Plus className="h-4 w-4" /> New board
             </Button>
           </nav>
+
+          {/* Mobile/Tablet Navigation */}
+          <div className="flex md:hidden items-center gap-2">
+            <Button size="sm" onClick={() => openNew()} className="h-9 px-3">
+              <Plus className="h-4 w-4" /> <span>New</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 p-1">
+                <DropdownMenuItem asChild>
+                  <Link to="/library" className="flex items-center gap-2 w-full">
+                    <FolderOpen className="h-4 w-4" /> Library
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/notes" className="flex items-center gap-2 w-full">
+                    <NotebookPen className="h-4 w-4" /> Notes
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/learn" className="flex items-center gap-2 w-full">
+                    <GraduationCap className="h-4 w-4" /> Learn
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
