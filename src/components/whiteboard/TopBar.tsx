@@ -22,7 +22,9 @@ import {
   LayoutTemplate,
   Play,
   Cloud,
+  Settings,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -47,6 +49,7 @@ export function TopBar({
   onOpenCloud?: () => void;
   boardTitle?: string;
 }) {
+  const isMobile = useIsMobile();
   const {
     pages,
     activePageId,
@@ -182,7 +185,124 @@ export function TopBar({
             <Menu className="h-5 w-5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-2" align="start">
+        <PopoverContent className="w-72 p-2 max-h-[85vh] overflow-y-auto" align="start">
+          {isMobile && (
+            <div className="border-b pb-2 mb-2">
+              <div className="mb-1 flex items-center gap-2 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Settings className="h-3.5 w-3.5" /> Actions & Tools
+              </div>
+              <div className="grid grid-cols-2 gap-1 px-1">
+                {/* AI Assistant */}
+                <button
+                  onClick={() => onOpenAI()}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-left text-foreground"
+                >
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <span>AI Chat</span>
+                </button>
+
+                {/* Widgets */}
+                <button
+                  onClick={() => onOpenWidgets()}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-left text-foreground"
+                >
+                  <Package className="h-4 w-4" />
+                  <span>Widgets</span>
+                </button>
+
+                {/* Study library (cloud files) */}
+                {onOpenCloud && (
+                  <button
+                    onClick={() => onOpenCloud()}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-left text-foreground"
+                  >
+                    <Cloud className="h-4 w-4" />
+                    <span>Cloud Files</span>
+                  </button>
+                )}
+
+                {/* Present (fullscreen) */}
+                {onPresent && (
+                  <button
+                    onClick={() => onPresent()}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-left text-foreground"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Present</span>
+                  </button>
+                )}
+
+                {/* QR share */}
+                <button
+                  onClick={() => shareQR()}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-left text-foreground"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>QR Share</span>
+                </button>
+
+                {/* Import */}
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-left text-foreground"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Import</span>
+                </button>
+              </div>
+
+              {/* Export options inline */}
+              <div className="mt-2 border-t pt-2 px-1">
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">
+                  Export Board
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    onClick={exportPNG}
+                    className="rounded p-1 text-center text-xs hover:bg-accent border border-border"
+                  >
+                    PNG
+                  </button>
+                  <button
+                    onClick={exportPDF}
+                    className="rounded p-1 text-center text-xs hover:bg-accent border border-border"
+                  >
+                    PDF
+                  </button>
+                  <button
+                    onClick={exportJSON}
+                    className="rounded p-1 text-center text-xs hover:bg-accent border border-border"
+                  >
+                    JSON
+                  </button>
+                </div>
+              </div>
+
+              {/* Background options inline */}
+              <div className="mt-2 border-t pt-2 px-1">
+                <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">
+                  <span>Background style</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {BACKGROUND_STYLES.map((s) => {
+                    const { style } = resolveBackground(page);
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setBackgroundStyle(s as BackgroundStyle)}
+                        className={`rounded p-1 text-center text-[10px] capitalize border ${
+                          style === s ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mb-1 flex items-center gap-2 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <LayoutTemplate className="h-3.5 w-3.5" /> New from template
           </div>
@@ -224,13 +344,13 @@ export function TopBar({
         className="hidden"
         onChange={(e) => importFile(e.target.files)}
       />
-      <button className={btn} title="Import" onClick={() => fileRef.current?.click()}>
+      <button className={cn(btn, "hidden lg:grid")} title="Import" onClick={() => fileRef.current?.click()}>
         <Upload className="h-5 w-5" />
       </button>
 
       <Popover>
         <PopoverTrigger asChild>
-          <button className={btn} title="Export">
+          <button className={cn(btn, "hidden lg:grid")} title="Export">
             <Download className="h-5 w-5" />
           </button>
         </PopoverTrigger>
@@ -256,11 +376,11 @@ export function TopBar({
         </PopoverContent>
       </Popover>
 
-      <button className={btn} title="QR share" onClick={shareQR}>
+      <button className={cn(btn, "hidden lg:grid")} title="QR share" onClick={shareQR}>
         <QrCode className="h-5 w-5" />
       </button>
 
-      <div className="mx-1 h-6 w-px bg-border shrink-0" />
+      <div className="mx-1 h-6 w-px bg-border shrink-0 hidden lg:block" />
 
       <button className={btn} title="Undo" onClick={undo}>
         <Undo2 className="h-5 w-5" />
@@ -284,11 +404,11 @@ export function TopBar({
         <Plus className="h-5 w-5" />
       </button>
 
-      <div className="mx-1 h-6 w-px bg-border shrink-0" />
+      <div className="mx-1 h-6 w-px bg-border shrink-0 hidden lg:block" />
 
       <Popover>
         <PopoverTrigger asChild>
-          <button className={btn} title="Background">
+          <button className={cn(btn, "hidden lg:grid")} title="Background">
             <Grid3x3 className="h-5 w-5" />
           </button>
         </PopoverTrigger>
@@ -348,19 +468,19 @@ export function TopBar({
       </Popover>
 
       {onOpenCloud && (
-        <button className={btn} onClick={onOpenCloud} title="Study library (cloud files)">
+        <button className={cn(btn, "hidden lg:grid")} onClick={onOpenCloud} title="Study library (cloud files)">
           <Cloud className="h-5 w-5" />
         </button>
       )}
       {onPresent && (
-        <button className={btn} onClick={onPresent} title="Present (fullscreen)">
+        <button className={cn(btn, "hidden lg:grid")} onClick={onPresent} title="Present (fullscreen)">
           <Play className="h-5 w-5" />
         </button>
       )}
-      <button className={btn} onClick={onOpenWidgets} title="Widgets">
+      <button className={cn(btn, "hidden lg:grid")} onClick={onOpenWidgets} title="Widgets">
         <Package className="h-5 w-5" />
       </button>
-      <button className={btn} onClick={onOpenAI} title="AI Assistant">
+      <button className={cn(btn, "hidden lg:grid")} onClick={onOpenAI} title="AI Assistant">
         <MessageSquare className="h-5 w-5 text-primary" />
       </button>
 

@@ -3,7 +3,7 @@
   "appName": "Slate",
   "webDir": "dist/client",
   "server": {
-    "url": "http://10.0.2.2:5173",
+    "url": "http://192.168.49.31:5173",
     "cleartext": true
   },
   "ios": {
