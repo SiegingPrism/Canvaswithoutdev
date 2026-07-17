@@ -32,7 +32,7 @@ const instructions: Record<TextAction, string> = {
 };
 
 export const runTextAction = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         action: z.enum(TEXT_ACTIONS),
@@ -46,10 +46,12 @@ export const runTextAction = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing GEMINI_API_KEY");
     const { createGoogleProvider } = await import("@/lib/ai-gateway.server");
     const googleProvider = createGoogleProvider(key);
+    const { guarded } = await import("@/lib/ai/studyGuard.server");
     const { text } = await generateText({
       model: googleProvider("gemini-2.5-flash"),
-      system:
+      system: guarded(
         "You are a writing and learning assistant inside a visual workspace. Respond with the transformed content only — no preamble, no meta commentary. Use markdown lists/headings when it improves readability.",
+      ),
       prompt: `${instructions[data.action]}${data.extra ? `\nExtra instruction: ${data.extra}` : ""}\n\nContent:\n"""\n${data.text}\n"""`,
     });
     return { action: data.action, result: text } as const;

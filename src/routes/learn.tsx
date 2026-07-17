@@ -3,7 +3,11 @@ import { useMemo, useState } from "react";
 import { useWhiteboard } from "@/lib/whiteboard/store";
 import { computeStreak, isDue, useLearning, type ReviewGrade } from "@/lib/learning/store";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { useNotes } from "@/lib/notes/store";
+import { generateStudyPlan, type StudyPlan } from "@/lib/ai/studyPlan.functions";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Flame,
@@ -16,6 +20,9 @@ import {
   Check,
   RotateCcw,
   Sparkles,
+  CalendarClock,
+  Loader2,
+  NotebookPen,
 } from "lucide-react";
 
 export const Route = createFileRoute("/learn")({
@@ -47,6 +54,28 @@ function LearnPage() {
 
   const [studying, setStudying] = useState<Deck | null>(null);
   const [quizzing, setQuizzing] = useState<QuizSet | null>(null);
+
+  // Revision forecast (PRD Doc 12/16): due cards over the next 7 days.
+  const forecast = useMemo(() => {
+    const days = Array.from({ length: 7 }, () => 0);
+    const now = Date.now();
+    const DAY = 86_400_000;
+    for (const id of boardOrder) {
+      const meta = boards[id];
+      const data = boardData[id];
+      if (!meta || meta.archived || !data) continue;
+      for (const page of data.pages) {
+        for (const o of page.objects) {
+          if (o.kind !== "flashcard") continue;
+          const p = progress[`${id}:${o.id}`];
+          const due = p?.due ?? now;
+          const offset = Math.max(0, Math.floor((due - now) / DAY));
+          if (offset < 7) days[offset] += 1;
+        }
+      }
+    }
+    return days;
+  }, [boards, boardOrder, boardData, progress]);
 
   const { decks, quizzes } = useMemo(() => {
     const decks: Deck[] = [];
@@ -141,6 +170,39 @@ function LearnPage() {
             label="Accuracy"
           />
         </section>
+
+        {/* Revision forecast (PRD Doc 12) */}
+        {forecast.some((n) => n > 0) && (
+          <section>
+            <SectionHeader title="Upcoming revision" icon={<CalendarClock className="h-4 w-4" />} />
+            <div className="grid grid-cols-7 gap-2">
+              {forecast.map((count, i) => {
+                const d = new Date(Date.now() + i * 86_400_000);
+                const label =
+                  i === 0 ? "Today" : d.toLocaleDateString(undefined, { weekday: "short" });
+                const max = Math.max(...forecast, 1);
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-1 rounded-xl border bg-card p-2"
+                  >
+                    <div className="flex h-16 w-full items-end justify-center">
+                      <div
+                        className={`w-5 rounded-t ${count > 0 ? "bg-primary" : "bg-muted"}`}
+                        style={{ height: `${Math.max(6, (count / max) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs font-semibold tabular-nums">{count}</div>
+                    <div className="text-[10px] text-muted-foreground">{label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* AI study planner (PRD Doc 12 §13) */}
+        <StudyPlanner />
 
         {/* Flashcard decks (PRD Doc 6 §4-§7) */}
         <section>
@@ -260,6 +322,133 @@ function LearnPage() {
       {studying && <StudySession deck={studying} onClose={() => setStudying(null)} />}
       {quizzing && <QuizRunner quiz={quizzing} onClose={() => setQuizzing(null)} />}
     </div>
+  );
+}
+
+// ---------- AI study planner (PRD Doc 12 §13) ----------
+
+function StudyPlanner() {
+  const navigate = useNavigate();
+  const createNote = useNotes((s) => s.createNote);
+  const appendBlocks = useNotes((s) => s.appendBlocks);
+  const renameNote = useNotes((s) => s.renameNote);
+
+  const [goal, setGoal] = useState("");
+  const [examDate, setExamDate] = useState("");
+  const [hours, setHours] = useState("2");
+  const [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState<StudyPlan | null>(null);
+
+  async function generate() {
+    if (!goal.trim()) {
+      toast.error("Describe what you're studying for");
+      return;
+    }
+    setBusy(true);
+    setPlan(null);
+    try {
+      const res = await generateStudyPlan({
+        data: {
+          goal: goal.trim(),
+          examDate: examDate || undefined,
+          hoursPerDay: Math.min(16, Math.max(0.5, Number(hours) || 2)),
+        },
+      });
+      setPlan(res.plan);
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn't generate a plan");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function saveAsNote() {
+    if (!plan) return;
+    const id = createNote({ type: "standard" });
+    renameNote(id, plan.title);
+    appendBlocks(id, [
+      { type: "text", content: plan.overview },
+      ...plan.days.flatMap((d) => [
+        { type: "h2" as const, content: `${d.day} — ${d.focus}` },
+        ...d.tasks.map((t) => ({ type: "checklist" as const, content: t })),
+      ]),
+      ...(plan.tips.length
+        ? [
+            { type: "h3" as const, content: "Tips" },
+            ...plan.tips.map((t) => ({ type: "bullet" as const, content: t })),
+          ]
+        : []),
+    ]);
+    toast.success("Study plan saved as a note");
+    navigate({ to: "/note/$noteId", params: { noteId: id } });
+  }
+
+  return (
+    <section>
+      <SectionHeader title="AI study planner" icon={<Sparkles className="h-4 w-4" />} />
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="grid gap-2 sm:grid-cols-[1fr_150px_110px_auto]">
+          <Input
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            placeholder="What are you studying for? e.g. Physics semester finals"
+          />
+          <Input
+            type="date"
+            value={examDate}
+            onChange={(e) => setExamDate(e.target.value)}
+            title="Exam date (optional)"
+          />
+          <Input
+            type="number"
+            min={0.5}
+            max={16}
+            step={0.5}
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+            title="Hours per day"
+          />
+          <Button onClick={generate} disabled={busy}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Plan
+          </Button>
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Goal, optional exam date, and hours per day — the AI builds a day-by-day schedule you can
+          save as a checklist note.
+        </p>
+
+        {plan && (
+          <div className="mt-4 rounded-lg border bg-background p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">{plan.title}</div>
+                <p className="mt-0.5 text-xs text-muted-foreground">{plan.overview}</p>
+              </div>
+              <Button size="sm" className="h-8 shrink-0 text-xs" onClick={saveAsNote}>
+                <NotebookPen className="h-3.5 w-3.5" /> Save as note
+              </Button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {plan.days.map((d, i) => (
+                <div key={i} className="rounded-lg border p-2">
+                  <div className="text-xs font-semibold">{d.day}</div>
+                  <div className="text-xs text-primary">{d.focus}</div>
+                  <ul className="mt-1 space-y-0.5">
+                    {d.tasks.map((t, j) => (
+                      <li key={j} className="text-[11px] text-muted-foreground">
+                        · {t}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 

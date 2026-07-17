@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { SHAPE_LIBRARY } from "./Canvas/shapes";
 import type { ShapeStroke } from "@/lib/whiteboard/types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const PALETTE = [
   "#000000", "#374151", "#6b7280", "#9ca3af", "#d1d5db", "#ffffff",
@@ -32,6 +33,7 @@ export function Toolbar() {
   } = useWhiteboard();
   const [swipe, setSwipe] = useState(0);
   const tools: ToolDef[] = getAllTools();
+  const isMobile = useIsMobile();
 
   const insertShape = (shape: ShapeStroke["shape"]) => {
     const w = 160;
@@ -54,8 +56,8 @@ export function Toolbar() {
   };
 
   return (
-    <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl bg-card/95 p-2 shadow-lg ring-1 ring-border backdrop-blur">
-      <div className="grid grid-cols-2 gap-1 lg:grid-cols-1">
+    <div className="pointer-events-auto flex flex-row lg:flex-col items-center gap-2 rounded-2xl bg-card/95 p-2 shadow-lg ring-1 ring-border backdrop-blur max-w-[95vw] overflow-x-auto scrollbar-none">
+      <div className="flex flex-row lg:grid lg:grid-cols-1 gap-1">
         {tools.map((t) => {
           const Icon = t.icon;
           const active = tool === t.id;
@@ -75,7 +77,7 @@ export function Toolbar() {
         })}
       </div>
 
-      <div className="h-px w-8 bg-border" />
+      <div className="h-6 w-px lg:h-px lg:w-8 bg-border" />
 
       {/* Shapes library */}
       <Popover>
@@ -87,7 +89,7 @@ export function Toolbar() {
             <Shapes className="h-5 w-5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="right" className="w-72 max-h-[70vh] overflow-y-auto space-y-3">
+        <PopoverContent side={isMobile ? "top" : "right"} className="w-72 max-h-[70vh] overflow-y-auto space-y-3">
           {SHAPE_LIBRARY.map((cat) => (
             <div key={cat.category}>
               <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -124,7 +126,7 @@ export function Toolbar() {
             />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="right" className="w-72 space-y-3">
+        <PopoverContent side={isMobile ? "top" : "right"} className="w-72 space-y-3">
           <div>
             <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Palette className="h-3.5 w-3.5" /> Palette
@@ -202,7 +204,7 @@ export function Toolbar() {
             <Trash2 className="h-5 w-5 text-destructive" />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="right" className="w-64 space-y-2">
+        <PopoverContent side={isMobile ? "top" : "right"} className="w-64 space-y-2">
           <p className="text-sm font-medium">Swipe to clear all</p>
           <p className="text-xs text-muted-foreground">Drag to 100 to wipe this page.</p>
           <Slider

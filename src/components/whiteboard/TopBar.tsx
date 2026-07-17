@@ -20,6 +20,8 @@ import {
   ArrowLeft,
   Menu,
   LayoutTemplate,
+  Play,
+  Cloud,
 } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,10 +37,14 @@ function uid() {
 export function TopBar({
   onOpenAI,
   onOpenWidgets,
+  onPresent,
+  onOpenCloud,
   boardTitle,
 }: {
   onOpenAI: () => void;
   onOpenWidgets: () => void;
+  onPresent?: () => void;
+  onOpenCloud?: () => void;
   boardTitle?: string;
 }) {
   const {
@@ -162,10 +168,10 @@ export function TopBar({
   }
 
   const btn =
-    "grid h-10 w-10 place-items-center rounded-lg text-foreground hover:bg-accent transition";
+    "grid h-10 w-10 place-items-center rounded-lg text-foreground hover:bg-accent transition shrink-0";
 
   return (
-    <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-2xl bg-card/95 p-1.5 shadow-lg ring-1 ring-border backdrop-blur">
+    <div className="pointer-events-auto flex flex-nowrap overflow-x-auto whitespace-nowrap scrollbar-none items-center gap-1 rounded-2xl bg-card/95 p-1.5 shadow-lg ring-1 ring-border backdrop-blur max-w-[92vw]">
       <Link to="/" className={btn} title="Dashboard">
         <ArrowLeft className="h-5 w-5" />
       </Link>
@@ -209,7 +215,7 @@ export function TopBar({
           {boardTitle}
         </div>
       )}
-      <div className="mx-1 h-6 w-px bg-border" />
+      <div className="mx-1 h-6 w-px bg-border shrink-0" />
 
       <input
         ref={fileRef}
@@ -254,7 +260,7 @@ export function TopBar({
         <QrCode className="h-5 w-5" />
       </button>
 
-      <div className="mx-1 h-6 w-px bg-border" />
+      <div className="mx-1 h-6 w-px bg-border shrink-0" />
 
       <button className={btn} title="Undo" onClick={undo}>
         <Undo2 className="h-5 w-5" />
@@ -263,12 +269,12 @@ export function TopBar({
         <Redo2 className="h-5 w-5" />
       </button>
 
-      <div className="mx-1 h-6 w-px bg-border" />
+      <div className="mx-1 h-6 w-px bg-border shrink-0" />
 
       <button className={btn} onClick={prevPage} title="Previous">
         <ChevronLeft className="h-5 w-5" />
       </button>
-      <div className="min-w-14 rounded px-2 text-center text-sm font-medium tabular-nums text-foreground">
+      <div className="min-w-14 rounded px-2 text-center text-sm font-medium tabular-nums text-foreground shrink-0">
         {pad2(idx + 1)}/{pad2(pages.length)}
       </div>
       <button className={btn} onClick={nextPage} title="Next">
@@ -278,7 +284,7 @@ export function TopBar({
         <Plus className="h-5 w-5" />
       </button>
 
-      <div className="mx-1 h-6 w-px bg-border" />
+      <div className="mx-1 h-6 w-px bg-border shrink-0" />
 
       <Popover>
         <PopoverTrigger asChild>
@@ -341,6 +347,16 @@ export function TopBar({
         </PopoverContent>
       </Popover>
 
+      {onOpenCloud && (
+        <button className={btn} onClick={onOpenCloud} title="Study library (cloud files)">
+          <Cloud className="h-5 w-5" />
+        </button>
+      )}
+      {onPresent && (
+        <button className={btn} onClick={onPresent} title="Present (fullscreen)">
+          <Play className="h-5 w-5" />
+        </button>
+      )}
       <button className={btn} onClick={onOpenWidgets} title="Widgets">
         <Package className="h-5 w-5" />
       </button>

@@ -19,6 +19,7 @@ import {
   History,
   RotateCcw,
   Trash2,
+  ScanSearch,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useWhiteboard } from "@/lib/whiteboard/store";
@@ -59,6 +60,7 @@ export function AISheet({
   contextText,
   pageContext,
   boardId,
+  onCircleSearch,
 }: {
   open: boolean;
   onOpenChange: (b: boolean) => void;
@@ -66,6 +68,8 @@ export function AISheet({
   /** Text of the whole active page (AI context engine, PRD Doc 5 §10) */
   pageContext?: string;
   boardId?: string;
+  /** Starts circle-&-search selection mode on the canvas */
+  onCircleSearch?: () => void;
 }) {
   const addRecentAI = useWhiteboard((s) => s.addRecentAI);
   const clearRecentAI = useWhiteboard((s) => s.clearRecentAI);
@@ -249,6 +253,15 @@ export function AISheet({
                 </button>
               );
             })}
+            {onCircleSearch && (
+              <button
+                onClick={onCircleSearch}
+                className="ml-auto flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary transition hover:bg-primary/20"
+                title="Draw around anything on the board and the AI will explain it"
+              >
+                <ScanSearch className="h-3 w-3" /> Circle & search
+              </button>
+            )}
           </div>
 
           <TabsContent

@@ -11,7 +11,11 @@ export type NoteBlockType =
   | "quote"
   | "code"
   | "callout"
-  | "divider";
+  | "divider"
+  /** PRD Doc 11: editable table — content is a JSON string[][] */
+  | "table"
+  /** PRD Doc 11: recorded audio note — content is a data URL */
+  | "audio";
 
 export type NoteBlock = {
   id: string;
@@ -85,6 +89,18 @@ export function noteToMarkdown(note: Note): string {
       case "divider":
         lines.push("---");
         break;
+      case "table": {
+        const rows = parseTable(b.content);
+        if (rows.length) {
+          lines.push(`| ${rows[0].join(" | ")} |`);
+          lines.push(`| ${rows[0].map(() => "---").join(" | ")} |`);
+          for (const row of rows.slice(1)) lines.push(`| ${row.join(" | ")} |`);
+        }
+        break;
+      }
+      case "audio":
+        lines.push("_[audio note]_");
+        break;
       default:
         lines.push(b.content);
     }
@@ -95,5 +111,49 @@ export function noteToMarkdown(note: Note): string {
 
 /** Plain text of a note — used as AI context and for search. */
 export function noteText(note: Note): string {
-  return [note.title, ...note.blocks.map((b) => b.content)].filter(Boolean).join("\n");
+  return [
+    note.title,
+    ...note.blocks.map((b) => {
+      if (b.type === "audio") return "";
+      if (b.type === "table") return parseTable(b.content).flat().join(" ");
+      return b.content;
+    }),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Parse a table block's JSON content into rows, tolerating bad data. */
+export function parseTable(content: string): string[][] {
+  try {
+    const data = JSON.parse(content);
+    if (Array.isArray(data) && data.every((r) => Array.isArray(r))) {
+      return data.map((r: unknown[]) => r.map((c) => String(c ?? "")));
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+export function emptyTable(): string {
+  return JSON.stringify([
+    ["Column 1", "Column 2"],
+    ["", ""],
+  ]);
+}
+
+// ---- Backlinks (PRD Doc 11 §14): [[Note Title]] references ----
+
+/** Titles referenced from this note via [[...]] syntax. */
+export function extractRefs(note: Note): string[] {
+  const found = new Set<string>();
+  for (const b of note.blocks) {
+    if (b.type === "audio" || b.type === "table") continue;
+    for (const m of b.content.matchAll(/\[\[([^\]]+)\]\]/g)) {
+      const t = m[1].trim();
+      if (t) found.add(t.toLowerCase());
+    }
+  }
+  return Array.from(found);
 }

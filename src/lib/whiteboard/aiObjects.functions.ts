@@ -68,7 +68,7 @@ const prompts: Record<AIObjectKind, (topic: string) => string> = {
 };
 
 export const generateLearningObjects = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         kind: z.enum(["flashcard", "quiz", "timeline", "uml", "roadmap", "mindmap"]),
@@ -87,10 +87,12 @@ export const generateLearningObjects = createServerFn({ method: "POST" })
     const contextPart = data.context
       ? `\n\nUse this workspace content as the primary source material:\n"""\n${data.context}\n"""`
       : "";
+    const { guarded } = await import("@/lib/ai/studyGuard.server");
     const { output } = await generateText({
       model: googleProvider("gemini-2.5-flash"),
-      system:
-        "You are an educational content generator. Output only valid JSON matching the schema. Keep text concise and accurate.",
+      system: guarded(
+        "You are an educational content generator. Output only valid JSON matching the schema. Keep text concise and accurate. If the topic is not educational, generate content that redirects to studying instead.",
+      ),
       prompt: prompts[data.kind](data.topic) + contextPart,
       output: Output.object({ schema: schema as unknown as z.ZodType }),
     });

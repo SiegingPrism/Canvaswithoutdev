@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Note, NoteBlock, NoteBlockType, NoteType } from "./types";
+import { emptyTable, type Note, type NoteBlock, type NoteBlockType, type NoteType } from "./types";
 
 const STORAGE_KEY = "notes.v1";
 
@@ -40,7 +40,12 @@ function save(s: PersistShape) {
 }
 
 export function emptyBlock(type: NoteBlockType = "text"): NoteBlock {
-  return { id: uid(), type, content: "", ...(type === "checklist" ? { checked: false } : {}) };
+  return {
+    id: uid(),
+    type,
+    content: type === "table" ? emptyTable() : "",
+    ...(type === "checklist" ? { checked: false } : {}),
+  };
 }
 
 type Actions = {

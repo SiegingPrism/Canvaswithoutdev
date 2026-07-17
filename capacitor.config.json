@@ -1,9 +1,15 @@
 {
-  "appId": "com.slate.canvas",
+  "appId": "com.slate.whiteboard",
   "appName": "Slate",
   "webDir": "dist/client",
   "server": {
-    "androidScheme": "https",
+    "url": "http://10.0.2.2:5173",
     "cleartext": true
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "allowMixedContent": false
   }
 }

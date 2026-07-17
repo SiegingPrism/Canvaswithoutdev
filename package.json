@@ -9,7 +9,12 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "mobile:setup": "bun add -d @capacitor/cli && bun add @capacitor/core @capacitor/android @capacitor/ios",
+    "mobile:add": "bunx cap add android && bunx cap add ios",
+    "mobile:sync": "bun run build && bunx cap sync",
+    "mobile:android": "bunx cap open android",
+    "mobile:ios": "bunx cap open ios"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.17",

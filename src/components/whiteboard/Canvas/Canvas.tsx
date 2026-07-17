@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useWhiteboard } from "@/lib/whiteboard/store";
-import type { CanvasObject, Point, TextObject } from "@/lib/whiteboard/types";
+import type { CanvasObject, Point, StickyNoteObject, TextObject } from "@/lib/whiteboard/types";
 import "./renderer"; // side-effect: registers built-in object kinds
 import { drawObject, objectBounds } from "./renderer";
 import { drawBackground } from "./background";
@@ -355,13 +355,15 @@ export function WhiteboardCanvas() {
       updateObject(hit.id, { status: next } as Partial<CanvasObject>);
       pushHistory();
     } else if (hit.kind === "text" || hit.kind === "sticky") {
+      // Bug fix: sticky notes are now editable on double-click, like text.
       setSelected(hit.id);
-      if (hit.kind === "text") setEditingText({ id: hit.id });
+      setEditingText({ id: hit.id });
     }
   }
 
   const editing = editingText
-    ? (page.objects.find((o) => o.id === editingText.id) as TextObject | undefined)
+    ? (page.objects.find((o) => o.id === editingText.id) as
+        TextObject | StickyNoteObject | undefined)
     : undefined;
 
   return (
@@ -387,7 +389,8 @@ export function WhiteboardCanvas() {
             top: editing.y * camera.zoom + camera.y,
             width: editing.w * camera.zoom,
             minHeight: editing.h * camera.zoom,
-            fontSize: editing.fontSize * camera.zoom,
+            fontSize: ("fontSize" in editing ? editing.fontSize : 16) * camera.zoom,
+            backgroundColor: editing.kind === "sticky" ? editing.color : undefined,
           }}
           defaultValue={editing.text}
           onBlur={(e) => {

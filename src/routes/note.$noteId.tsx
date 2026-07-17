@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNotes } from "@/lib/notes/store";
 import {
   NOTE_TYPE_LABELS,
+  extractRefs,
   noteText,
   noteToMarkdown,
+  parseTable,
   type NoteBlock,
   type NoteBlockType,
   type NoteType,
@@ -36,6 +38,10 @@ import {
   Code,
   Lightbulb,
   Minus,
+  Table2,
+  Mic,
+  Square,
+  Link2 as LinkIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/note/$noteId")({
@@ -57,6 +63,8 @@ const BLOCK_TYPES: { type: NoteBlockType; label: string; icon: typeof Type }[] =
   { type: "code", label: "Code", icon: Code },
   { type: "callout", label: "Callout", icon: Lightbulb },
   { type: "divider", label: "Divider", icon: Minus },
+  { type: "table", label: "Table", icon: Table2 },
+  { type: "audio", label: "Audio note", icon: Mic },
 ];
 
 const AI_ACTION_LABELS: Record<TextAction, string> = {
@@ -111,6 +119,7 @@ function NoteEditor() {
   const { noteId } = Route.useParams();
   const navigate = useNavigate();
   const notes = useNotes((s) => s.notes);
+  const noteOrder = useNotes((s) => s.noteOrder);
   const {
     renameNote,
     setNoteType,
@@ -128,6 +137,17 @@ function NoteEditor() {
   const note = notes[noteId];
   const [aiBusy, setAiBusy] = useState<TextAction | null>(null);
   const [aiResult, setAiResult] = useState<{ action: TextAction; text: string } | null>(null);
+
+  // Backlinks (PRD Doc 11 §14): [[Title]] references between notes.
+  const links = useMemo(() => {
+    if (!note) return { outgoing: [], incoming: [] };
+    const all = noteOrder.map((id) => notes[id]).filter((n) => n && n.id !== note.id);
+    const refs = extractRefs(note);
+    const outgoing = all.filter((n) => refs.includes((n.title || "").trim().toLowerCase()));
+    const myTitle = (note.title || "").trim().toLowerCase();
+    const incoming = myTitle ? all.filter((n) => extractRefs(n).includes(myTitle)) : [];
+    return { outgoing, incoming };
+  }, [note, notes, noteOrder]);
 
   const numberedIndex = useMemo(() => {
     if (!note) return new Map<string, number>();
@@ -369,10 +389,60 @@ function NoteEditor() {
               </div>
             )}
           </div>
+
+          {/* Backlinks (PRD Doc 11 §14) */}
+          <div className="mt-4 rounded-xl border bg-card p-3 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <LinkIcon className="h-4 w-4 text-primary" /> Links
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Reference other notes by typing{" "}
+              <code className="rounded bg-muted px-1">[[Note title]]</code> anywhere.
+            </p>
+            {links.outgoing.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  References
+                </div>
+                {links.outgoing.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => navigate({ to: "/note/$noteId", params: { noteId: n.id } })}
+                    className="mt-1 flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs hover:bg-accent"
+                  >
+                    <NotebookIcon /> {n.title || "Untitled note"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {links.incoming.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Referenced by
+                </div>
+                {links.incoming.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => navigate({ to: "/note/$noteId", params: { noteId: n.id } })}
+                    className="mt-1 flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs hover:bg-accent"
+                  >
+                    <NotebookIcon /> {n.title || "Untitled note"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {links.outgoing.length === 0 && links.incoming.length === 0 && (
+              <p className="mt-2 text-xs text-muted-foreground/70">No linked notes yet.</p>
+            )}
+          </div>
         </aside>
       </div>
     </div>
   );
+}
+
+function NotebookIcon() {
+  return <span className="text-muted-foreground">↳</span>;
 }
 
 function BlockRow({
@@ -480,6 +550,10 @@ function BlockRow({
       <div className="min-w-0 flex-1">
         {block.type === "divider" ? (
           <hr className="my-3 border-border" />
+        ) : block.type === "table" ? (
+          <TableBlock content={block.content} onChange={(content) => onChange({ content })} />
+        ) : block.type === "audio" ? (
+          <AudioBlock content={block.content} onChange={(content) => onChange({ content })} />
         ) : (
           <div
             className={`flex items-start gap-2 ${
@@ -557,6 +631,146 @@ function AutoTextarea({
       rows={1}
       className={`w-full resize-none overflow-hidden bg-transparent leading-relaxed outline-none placeholder:text-muted-foreground/40 ${className ?? ""}`}
     />
+  );
+}
+
+/** Editable table block (PRD Doc 11 §11). Content is a JSON string[][]. */
+function TableBlock({ content, onChange }: { content: string; onChange: (v: string) => void }) {
+  const rows = parseTable(content);
+  const safe = rows.length
+    ? rows
+    : [
+        ["Column 1", "Column 2"],
+        ["", ""],
+      ];
+
+  function commit(next: string[][]) {
+    onChange(JSON.stringify(next));
+  }
+  function setCell(r: number, c: number, v: string) {
+    commit(safe.map((row, ri) => (ri === r ? row.map((cell, ci) => (ci === c ? v : cell)) : row)));
+  }
+
+  return (
+    <div className="my-1 overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <tbody>
+          {safe.map((row, r) => (
+            <tr key={r}>
+              {row.map((cell, c) => (
+                <td key={c} className="border border-border p-0">
+                  <input
+                    value={cell}
+                    onChange={(e) => setCell(r, c, e.target.value)}
+                    className={`w-full min-w-24 bg-transparent px-2 py-1.5 outline-none focus:bg-accent/40 ${
+                      r === 0 ? "font-semibold" : ""
+                    }`}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-1 flex gap-1 opacity-0 transition group-hover:opacity-100">
+        <button
+          className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+          onClick={() => commit([...safe, safe[0].map(() => "")])}
+        >
+          + Row
+        </button>
+        <button
+          className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+          onClick={() => commit(safe.map((row) => [...row, ""]))}
+        >
+          + Column
+        </button>
+        {safe.length > 2 && (
+          <button
+            className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+            onClick={() => commit(safe.slice(0, -1))}
+          >
+            − Row
+          </button>
+        )}
+        {safe[0].length > 1 && (
+          <button
+            className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+            onClick={() => commit(safe.map((row) => row.slice(0, -1)))}
+          >
+            − Column
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Audio note block (PRD Doc 11 §7): record via MediaRecorder, store as data URL. */
+function AudioBlock({ content, onChange }: { content: string; onChange: (v: string) => void }) {
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  async function start() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      recorderRef.current = rec;
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => chunksRef.current.push(e.data);
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        const reader = new FileReader();
+        reader.onload = () => onChange(reader.result as string);
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      rec.start();
+      setRecording(true);
+    } catch (e) {
+      console.error(e);
+      toast.error("Microphone access denied");
+    }
+  }
+
+  function stop() {
+    recorderRef.current?.stop();
+    setRecording(false);
+  }
+
+  return (
+    <div className="my-1 flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2">
+      {content ? (
+        <>
+          <audio controls src={content} className="h-9 min-w-0 flex-1" />
+          <button
+            className="shrink-0 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+            onClick={() => onChange("")}
+          >
+            Re-record
+          </button>
+        </>
+      ) : recording ? (
+        <button
+          onClick={stop}
+          className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/20"
+        >
+          <Square className="h-3.5 w-3.5" /> Stop recording
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          </span>
+        </button>
+      ) : (
+        <button
+          onClick={start}
+          className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:border-primary hover:bg-accent"
+        >
+          <Mic className="h-3.5 w-3.5" /> Record audio note
+        </button>
+      )}
+    </div>
   );
 }
 

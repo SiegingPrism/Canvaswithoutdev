@@ -15,6 +15,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NoteNoteIdRouteImport } from './routes/note.$noteId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
+import { Route as ApiCloudRouteImport } from './routes/api/cloud'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const NotesRoute = NotesRouteImport.update({
@@ -47,6 +48,11 @@ const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
   path: '/board/$boardId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCloudRoute = ApiCloudRouteImport.update({
+  id: '/api/cloud',
+  path: '/api/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/notes': typeof NotesRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/cloud': typeof ApiCloudRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/note/$noteId': typeof NoteNoteIdRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/notes': typeof NotesRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/cloud': typeof ApiCloudRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/note/$noteId': typeof NoteNoteIdRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/notes': typeof NotesRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/cloud': typeof ApiCloudRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/note/$noteId': typeof NoteNoteIdRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/notes'
     | '/api/chat'
+    | '/api/cloud'
     | '/board/$boardId'
     | '/note/$noteId'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/notes'
     | '/api/chat'
+    | '/api/cloud'
     | '/board/$boardId'
     | '/note/$noteId'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/notes'
     | '/api/chat'
+    | '/api/cloud'
     | '/board/$boardId'
     | '/note/$noteId'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   NotesRoute: typeof NotesRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiCloudRoute: typeof ApiCloudRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
   NoteNoteIdRoute: typeof NoteNoteIdRoute
 }
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardBoardIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cloud': {
+      id: '/api/cloud'
+      path: '/api/cloud'
+      fullPath: '/api/cloud'
+      preLoaderRoute: typeof ApiCloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   NotesRoute: NotesRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiCloudRoute: ApiCloudRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
   NoteNoteIdRoute: NoteNoteIdRoute,
 }

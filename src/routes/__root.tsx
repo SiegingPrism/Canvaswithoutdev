@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportAppError } from "../lib/error-reporting";
 import { Toaster } from "../components/ui/sonner";
+import { CommandPalette } from "../components/CommandPalette";
 
 function NotFoundComponent() {
   return (
@@ -79,11 +80,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Slate — Smart Whiteboard" },
-      { name: "description", content: "A fast, tactile whiteboard for mobile and tablet with smart pens, widgets, and an AI teaching assistant." },
+      {
+        name: "description",
+        content:
+          "A fast, tactile whiteboard for mobile and tablet with smart pens, widgets, and an AI teaching assistant.",
+      },
       { property: "og:title", content: "Slate — Smart Whiteboard" },
       { property: "og:description", content: "Draw, teach, and collaborate on any device." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#0f172a" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       {
@@ -91,6 +99,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -116,10 +126,18 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // PWA: register the offline service worker (production only).
+  useEffect(() => {
+    if (import.meta.env.PROD && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <CommandPalette />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );
