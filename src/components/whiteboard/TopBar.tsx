@@ -3,6 +3,7 @@ import { useWhiteboard } from "@/lib/whiteboard/store";
 import type { BackgroundStyle, ImageObject } from "@/lib/whiteboard/types";
 import { TEMPLATES, type TemplateKey } from "@/lib/whiteboard/templates";
 import { BACKGROUND_COLORS, BACKGROUND_STYLES, resolveBackground } from "./Canvas/background";
+import { cn } from "@/lib/utils";
 
 import {
   Upload,
